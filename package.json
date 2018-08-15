@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "docz": "^0.10.2"
+  },
+  "name": "react-in-sight",
+  "version": "1.0.0",
+  "description": "react source code analysis",
+  "main": "index.js",
+  "repository": "git@github.com:gogoyqj/react-in-sight.git",
+  "author": "yang",
+  "license": "MIT"
+}

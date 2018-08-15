@@ -1,0 +1,130 @@
+# key and diff
+
+import { Playground } from 'docz';
+import { ParentA, ParentB, ParentC, ParentD, ParentE } from '../common/index';
+
+
+拣 key 和 diff 开启 react 源码分析之旅，实在只是因为个人对这一块印象比较深刻，且其本身比较有意思。本文仅涉及对单层的 diff 过程及 key 在过程中扮演的角色进行简略的分析，如有谬误，烦请指正。
+
+## 直奔主题
+
+##### 1. 数据结构
+
+```
+    cur vnode children [ A, B, [ C@Ckey ], D@DKey ]
+    pre vnode children [ A, B, [ E@Ekey, C@Ckey ], D@key ]\
+```
+
+react 虚拟 dom 会保留 jsx 内定义的层级结构，这个层级结构的作用是用以生成全局唯一的内置 key，而不是直接 diff
+
+##### 2. 生成 key 及确定挂载顺序顺序
+
+  vnode 真正起作用的 key 是由其所在的层级关系及 key 属性共同决定，当 children 的某个元素 vnode 为数组的时候，将生成一个层级 key，取值为：
+  
+    (向上继承的层级前缀 || '.') + (元素 vnode 的 key || 元素 vnode 在 children 中的索引)\
+
+  因而 vnode 真正的 key 的取值是：
+
+    (层级前缀 ? 层级前缀 + ':' || '') + (元素 vnode 的 key || 元素 vnode 在 children 中的索引)\
+  
+
+  例如“数据结构”的层级结构，生成 key 最终是:
+
+```jsx
+  cur [ '.0', '.1', '.2:Ckey', '.DKey'] 
+  pre [ '.0', '.1', '.2:0', '.2:Ckey', '.Dkey' ]\
+```
+
+  而 cur 数组内 key 的顺序，对应的则是 diff 的顺序，也即是挂载顺序[15.4.3 内 mountIndex]
+
+  见源码
+
+```jsx
+  // https://github.com/facebook/react/blob/master/packages/react/src/ReactChildren.js
+  function traverseAllChildrenImpl(
+    children,
+    nameSoFar,
+    callback,
+    traverseContext,
+  )...\
+```
+
+##### 3. diff
+
+  按照挂载顺序，cur 和 pre key 相同的 vnode 进行 diff，例如：
+
+```jsx
+    cur vnode children [ A, B, [ C@Ckey ], D@DKey, E@EKey ]
+    pre vnode children [ A, B, [ E@Ekey, C@Ckey ], D@key ]\
+      =>
+    A : A diff 更新
+    B : B diff 更新
+    C@Ckey : C@Ckey diff 更新
+    D@Dkey : D@Dkey diff 更新
+    E@EKey :        diff 创建新的
+      =>
+           : E@Ekey 等未 diff 到的 vnode 直接 unmount
+```
+
+
+## 以例试法
+
+示例中，各情形，分别对应当前 diff 的虚拟节点[对应组件 ParentA, ParentB, ParentC, ParentD] children 长度是否变化及 children 内每个 vnode 是否有 key 属性。
+
+点击“刷新”按钮会触发 Parent* 组件 rerender：
+
+    Component* create 意味着重新创建了组件 Component* 的实例 [WillUnmount => DidMount]
+    Component* update 则意味着仅触发 Component* 的更新 [WillReceiveProps => DidUpdate]\
+
+### no key 
+
+<Playground>
+  <ParentA />
+  <hr />
+  <ParentB />
+  <hr />
+  <ParentC />
+</Playground>
+
+### 引入 key
+
+<Playground>
+  <ParentD />
+</Playground>
+
+### 更复杂的结构
+
+<Playground>
+  <ParentE />
+  <hr />
+</Playground>
+
+源码
+
+
+```jsx
+  render() {
+    const { flag } = this.state;
+    return (
+      <div>
+        <h4>
+          children 长度不变且每个 child 具有 key 属性且最后一个 child 结构变化
+        </h4>
+        <button onClick={() => this.setState({ flag: !flag })}>刷新</button>
+        <pre>
+          pre children: [A@key, B@key,    C@key ]<br />
+          now children: [A@key, B@key, [ C@key ]]
+        </pre>
+        <ComponentA key="A" />
+        <ComponentB key="B" />
+        {
+          flag ? [
+            <ComponentC key="C" />
+          ] : (
+            <ComponentC key="C" />
+          )
+        }
+      </div>
+    );
+  }
+```
