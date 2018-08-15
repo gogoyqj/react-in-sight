@@ -1,8 +1,8 @@
 {
-  "app.js": "/static/js/app.c3a49daf.js",
-  "readme.js": "/static/js/readme.90238d3c.js",
-  "01-key-and-diff-index.js": "/static/js/01-key-and-diff-index.9b8e5572.js",
-  "vendors.js": "/static/js/vendors.9829319c.js",
-  "runtime~app.js": "/static/js/runtime~app.57b7b4ecb2b7eb54df69.js",
-  "index.html": "/index.html"
+  "app.js": "/react-in-sight/static/js/app.592c3156.js",
+  "readme.js": "/react-in-sight/static/js/readme.90238d3c.js",
+  "01-key-and-diff-index.js": "/react-in-sight/static/js/01-key-and-diff-index.9b8e5572.js",
+  "vendors.js": "/react-in-sight/static/js/vendors.8ee45a14.js",
+  "runtime~app.js": "/react-in-sight/static/js/runtime~app.e6e4ac287eb143eeb7c5.js",
+  "index.html": "/react-in-sight/index.html"
 }
