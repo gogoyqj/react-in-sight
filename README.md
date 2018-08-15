@@ -7,4 +7,6 @@ react source analysis
 
 ## 章节
 
-- 01. key and diff
+- 01. [key and diff](https://gogoyqj.github.io/react-in-sight/#/react-in-sight/01-key-and-diff-index)
+
+[阅读全文](https://gogoyqj.github.io/react-in-sight/#/react-in-sight/readme)
