@@ -1,37 +1,62 @@
 # key and diff
 
 import { Playground } from 'docz';
-import { ParentA, ParentB, ParentC, ParentD, ParentE } from '../common/index';
+import { ParentA, ParentB, ParentC, ParentD, ParentE, ParentF, ParentG } from '../common/index';
 
 
 拣 key 和 diff 开启 react 源码分析之旅，实在只是因为个人对这一块印象比较深刻，且其本身比较有意思。本文仅涉及对单层的 diff 过程及 key 在过程中扮演的角色进行简略的分析，如有谬误，烦请指正。
 
 ## 直奔主题
 
-##### 1. 数据结构
+### 数据结构【仅考虑 vnode.children 为数组情形】
+
+  A, B, C, D 为同一层级 vnode
 
 ```
-    cur vnode children [ A, B, [ C@Ckey ], D@DKey ]
-    pre vnode children [ A, B, [ E@Ekey, C@Ckey ], D@key ]\
+  cur vnode.children: [ A, B, [ C@Ckey ], D@DKey ]
+  pre vnode.children: [ A, B, [ E@Ekey, C@Ckey ], D@key ]\
 ```
 
-react 虚拟 dom 会保留 jsx 内定义的层级结构，这个层级结构的作用是用以生成全局唯一的内置 key，而不是直接 diff
+### diff
 
-##### 2. 生成 key 及确定挂载顺序顺序
+#### React v15.*
 
-  vnode 真正起作用的 key 是由其所在的层级关系及 key 属性共同决定，当 children 的某个元素 vnodeArray 是数组的时候，将生成一个层级前缀，取值为：
+#####  概述
+
+  顺序，同一层级下 key 相同的 vnode 进行 diff。
+
+##### 如何生成唯一的 key？
+
+  当 children 的某个 vnode 是数组的时候，将生成一个层级前缀，取值为：
+
+```
+  (向上继承的层级前缀【多个数组嵌套】 || '.') + (vnode 的 key || vnode 在 children 中的索引)\
+```
+
+  如下，children 内第一个 vnode 类型为数组，则该数组内所有 vnode 的 key 将获得一个 '.0' 前缀加成:
+```
+  children: [[A, B, C@ckey], D, E@ekey]
+    =>
+  .0\
+```
+  相应的 key 取值是：
+
+```
+  A .0:0
+  B .0:1
+  C .0:ckey\
+```
+
+  其他非数组类型 vnode key 的取值则是：
   
-    (向上继承的层级前缀 || '.') + (vnode 的 key || vnode 在 children 中的索引)\
+    (向上继承的层级前缀【多个数组嵌套】 || '.') + (vnode 的 key || vnode 在 children 中的索引)\
 
-  因而 vnodeArray 内 vnode 真正的 key 的取值是：
-
-    (层级前缀 ? 层级前缀 + ':' || '') + (vnode 的 key || vnode 在 vnodeArray 中的索引)\
-
-  而 children 内其他 vnode 真正的 key 的取值则是：
+  即:
+```
+  D: .1
+  E: .ekey
+```
   
-    (向上继承的层级前缀 || '.') + (vnode 的 key || vnode 在 children 中的索引)\
-  
-
   例如“数据结构”的层级结构，生成 key 最终是:
 
 ```jsx
@@ -39,23 +64,7 @@ react 虚拟 dom 会保留 jsx 内定义的层级结构，这个层级结构的�
   pre [ '.0', '.1', '.2:0', '.2:Ckey', '.Dkey' ]\
 ```
 
-  而 cur 数组内 key 的顺序，对应的则是 diff 的顺序，也即是挂载顺序[15.4.3 内 mountIndex]
-
-  见源码
-
-```jsx
-  // https://github.com/facebook/react/blob/master/packages/react/src/ReactChildren.js
-  function traverseAllChildrenImpl(
-    children,
-    nameSoFar,
-    callback,
-    traverseContext,
-  )...\
-```
-
-##### 3. diff
-
-  按照挂载顺序，cur 和 pre key 相同的 vnode 进行 diff，例如：
+##### 最终 diff 流程：
 
 ```jsx
     cur vnode children [ A, B, [ C@Ckey ], D@DKey, E@EKey ]
@@ -70,6 +79,75 @@ react 虚拟 dom 会保留 jsx 内定义的层级结构，这个层级结构的�
            : E@Ekey 等未 diff 到的 vnode 直接 unmount
 ```
 
+#### React v16.4.2
+
+v16 的 diff 有较大的调整。
+
+##### vnode 数据结构
+
+```
+  vnode: FiberNode
+  {
+    ...
+    alternate: 镜像
+    child: 第一个孩子节点
+    return: 父节点
+    sibling: 下一个兄弟节点
+    tag: 类型
+    ...
+  }
+```
+
+  此外，对于数组:
+```
+  vnode.children [[ A, B ], C, D]\
+```
+  [A, B]会直接对应一个真实的 tag 为 的Fragment【10】的 FiberNode 实例【该设计让组件支持返回数组】:
+```
+  [
+    FiberNode  {
+      ...
+      tag: 10
+      child: A FiberNode
+      ...
+    },
+    FiberNode {
+      ...
+      type: C
+      ...
+    },
+    FiberNode {
+      ...
+      type: D
+      ...
+    }
+  ]
+```
+
+  该 FiberNode 实例将用在当前层级的 diff，该 FiberNode diff 之后立即对其子 vnode【A, B】迭代 diff。
+
+
+  其 diff 流程【见 reconcileChildrenArray】：
+
+  1. 按照索引【index】顺序进行 diff，调用 updateSlot，该方法在索引匹配但 key 不匹配的情况下，让索引 diff 循环中断
+  2. curChildren.length <= preChildren.length ? 结束 diff : 继续
+  3. preChild[oldFiber] 不存在 ？ 新建，结束 diff : 继续
+  4. mapRemainingChildren && updateFromMap，key 一致的 FiberNode diff
+  5. 善后
+
+```jsx
+  // 第一轮
+  cur vnode children [ A, B, [ C@Ckey ], D@DKey, E@EKey ]
+  pre vnode children [ A, B, [ E@Ekey, C@Ckey ], D@key ]
+    =>
+  A : A diff 更新
+  B : B diff 更新
+  FragmentFiberNode: FragmentFiberNode diff 更新
+  C@Ckey : C@Ckey diff 更新
+         : E@Ekey 等未 diff 到的 vnode 直接 unmount\
+  D@Dkey : D@Dkey diff 更新
+  E@EKey :        diff 创建新的
+```
 
 ## 以例试法
 

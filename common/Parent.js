@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { ComponentA, ComponentB, ComponentC  } from './index';
+import { ComponentA  } from './index';
 
 // 对齐
 export class ParentA extends Component {
@@ -19,9 +19,9 @@ export class ParentA extends Component {
           cur children: [A, B, C]<br />
           pre children: [A, B, C]
         </pre>
-        <ComponentA />
-        <ComponentB />
-        <ComponentC />
+        <ComponentA name="A" />
+        <ComponentA name="B" />
+        <ComponentA name="C" />
       </div>
     );
   }
@@ -44,19 +44,19 @@ export class ParentB extends Component {
           cur children: [A, B, C]<br />
           pre children: [A, C, B]
         </pre>
-        <ComponentA key="A" />
+        <ComponentA name="A" key="A" />
         {
           flag ? (
-            <ComponentB />
+            <ComponentA name="B" />
           ) : (
-            <ComponentC />
+            <ComponentA name="C" />
           )
         }
         {
           !flag ? (
-            <ComponentB />
+            <ComponentA name="B" />
           ) : (
-            <ComponentC />
+            <ComponentA name="C" />
           )
         }
       </div>
@@ -81,9 +81,9 @@ export class ParentC extends Component {
           cur children: [A, B, C]<br />
           pre children: [A, C]
         </pre>
-        <ComponentA />
-        <ComponentB />
-        <ComponentC />
+        <ComponentA name="A" />
+        <ComponentA name="B" />
+        <ComponentA name="C" />
       </div>
     ) : (
       <div>
@@ -95,8 +95,8 @@ export class ParentC extends Component {
           cur children: [A, B, C]<br />
           pre children: [A, C]
         </pre>
-        <ComponentA />
-        <ComponentC />
+        <ComponentA name="A" />
+        <ComponentA name="C" />
       </div>
     );
   }
@@ -119,9 +119,9 @@ export class ParentD extends Component {
           cur children: [A@key, B@key, C@key]<br />
           pre children: [A@key, C@key]
         </pre>
-        <ComponentA key="A" />
-        <ComponentB key="B" />
-        <ComponentC key="C" />
+        <ComponentA name="A" key="A" />
+        <ComponentA name="B" key="B" />
+        <ComponentA name="C" key="C" />
       </div>
     ) : (
       <div>
@@ -133,8 +133,8 @@ export class ParentD extends Component {
           cur children: [A@key, B@key, C@key]<br />
           pre children: [A@key, C@key]
         </pre>
-        <ComponentA key="A" />
-        <ComponentC key="C" />
+        <ComponentA name="A" key="A" />
+        <ComponentA name="C" key="C" />
       </div>
     );
   }
@@ -158,15 +158,67 @@ export class ParentE extends Component {
           cur children: [A@key, B@key,    C@key ]<br />
           pre children: [A@key, B@key, [ C@key ]]
         </pre>
-        <ComponentA key="A" />
-        <ComponentB key="B" />
+        <ComponentA name="A" key="A" />
+        <ComponentA name="B" key="B" />
         {
           flag ? [
-            <ComponentC key="C" />
+            <ComponentA name="C" key="C" />
           ] : (
-            <ComponentC key="C" />
+            <ComponentA name="C" key="C" />
           )
         }
+      </div>
+    );
+  }
+}
+
+export class ParentF extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {};
+  }
+  render() {
+    const { flag } = this.state;
+    return (
+      <div>
+        <button onClick={() => this.setState({ flag: !flag })}>刷新</button>
+        <ComponentA name="A" />
+        {
+          flag ? (
+            <ComponentA name="C" />
+          ) : null
+        }
+        {
+          flag ? null: (
+            <ComponentA name="C" />
+          )
+        }
+        <ComponentA name="B" />
+      </div>
+    );
+  }
+}
+
+export class ParentG extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {};
+  }
+  render() {
+    const { flag } = this.state;
+    return (
+      <div>
+        <button onClick={() => this.setState({ flag: !flag })}>刷新</button>
+        <ComponentA name="A" />
+        {
+          flag ? [
+            <ComponentA name="B" key="B1" />,
+            <ComponentA name="B" key="B2" />,
+          ] : [
+            <ComponentA name="B" key="B2" />
+          ]
+        }
+        <ComponentA name="C" />
       </div>
     );
   }
